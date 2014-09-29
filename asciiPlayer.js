@@ -1,69 +1,167 @@
 // Append SoundCloud SDK
-var js = document.createElement("script");
-js.type = "text/javascript";
+var js = document.createElement('script');
+js.type = 'text/javascript';
 js.src = '//connect.soundcloud.com/sdk.js';
 document.head.appendChild(js);
 
-window.onload = function() {
-	var tracks = document.getElementsByClassName('ascii-player');
-	if (tracks.length) {
-		SC.initialize({
-			client_id: '7378a0b12a23988a8fded1ae3044f549'
-		});
+// If track id is passed as a url param
+var href = window.location.href;
+var urlparams = ((window.location.search) ? window.location.search.split("?")[1].split("&") : null);
+var trackid = ((urlparams && urlparams[0].split('=')[0].toLowerCase() === 'id') ? urlparams[0].split('=')[1] : null);
+
+window.onload = function () {
+	window.tracksOnPage = document.getElementsByClassName('ascii-player');
+	if (!tracksOnPage.length && !trackid) {
+		return;
 	}
 
-	for (var i = 0; i < tracks.length; i++) {
-		var id = tracks[i].getAttribute('id');
-		SC.get('/tracks/' + id, function(track) {
-			asciiPlayer(track);
+	SC.initialize({
+		client_id: '7378a0b12a23988a8fded1ae3044f549'
+	});
+
+	loadTracks();
+}
+
+function loadTracks () {
+	var playerWrapper;
+	var trackids = [];
+
+	if (trackid) {
+		trackids.push(trackid);
+
+	} else if (window.tracksOnPage.length) {
+		for (var i = 0; i < window.tracksOnPage.length; i++) {
+			var id = window.tracksOnPage[i].getAttribute('id');
+			trackids.push(id);
+		}
+	}
+
+	for (var i = 0; i < trackids.length; i++) {
+		playerWrapper = ((trackid) ? window.document.body : window.document.getElementById(trackids[i]));
+		SC.get('/tracks/' + trackids[i], function (track) {
+			if (track.errors) {
+				return playerWrapper.innerHTML = 'ERROR: Invalid track id';
+			}
+			var player = new asciiPlayer(track);
+			player.render(playerWrapper);
 		});
 	}
 }
 
 function asciiPlayer (track) {
-	var duration = formatTime(track.duration);
-	console.log(track);
+	var self = this;
+	this.borderChar = '#';
+	this.playerPadding = 3;
+	this.playerWidth = 60 - this.playerPadding;
+	this.playerStyle = {
+		backgroundColor: '#ffffff',
+		fontFamily: 'monospace',
+		fontSize: '13px',
+		fontWeight: 'normal',
+		fontStyle: 'normal',
+		letterSpacing: 'normal',
+		lineHeight: 'normal',
+		color: '#000000',
+		textTransform: 'uppercase'
+	};
+	this.player = [];
 
-	// markup
-	// TODO: automate the way this gets rendered
-	var bar = ['|', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'];
-	var player = [
-		'###########################################################', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;', track.title, '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;', '[<span class="playPause">play </span>]&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="timeElapsed">00:00:00</span> / ', duration, '&nbsp;&nbsp;&nbsp;&nbsp;#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;', '<span class="progressBar">', bar.join(''), '</span>', '&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;', '<a href="' + track.user.permalink_url + '">', track.user.username, '</a>', ' via ', '<a href="http://soundcloud.com">soundcloud</a>', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'#', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;', '#', '<br/>',
-		'###########################################################',
-		'<br/><br/><br/><br/><br/><br/><br/>'
-	];
+	this.render = function (wrapper) {
+		// Start Rendering Player
+		renderLines();
 
-	// create element
-	var $player = document.createElement('div');
-	$player.innerHTML = player.join('');
+		// create element with player contents + player style
+		this.$player = document.createElement('div');
+		this.$player.innerHTML = this.player.join('');
+		for (style in self.playerStyle) {
+			self.$player.style[style] = self.playerStyle[style];
+		}
 
-	// events
-	$player.querySelector('.playPause').addEventListener('click', togglePlayPause);
-	// TODO: add event for when clicking on progress bar
+		// bind events
+		this.$player.querySelector('.playPause').addEventListener('click', this.togglePlayPause);
+		// TODO: Add ability to skip in progress bar
+		// $player.querySelector('.progressBar').addEventListener('click', changeProgress);
 
-	// functions
-	function togglePlayPause (e) {
-		var self = this;
-		if (e.target.innerHTML.toLowerCase().trim() === 'play') {
+		wrapper.appendChild(this.$player);
 
-			// TODO: probably want to render this when the track actually plays,
-			// in case it lags
-			e.target.innerHTML = 'pause';
+		function renderLines () {
+			// TODO: Clean the way progress bar + play btn + progress are being rendered/calcuated
+			var progressBarLength = 0;
+			self.progressBar = [];
+			self.progressBar.push('|');
+			progressBarLength++;
+			for (var i = 0; i < (self.playerWidth - ((self.playerPadding + 1) * 2)); i++) {
+				self.progressBar.push('-');
+				progressBarLength++;
+			}
+
+			var playBtn = '<span class="playPause">[play ]</span>';
+			var timeElapsed = '<span class="timeElapsed">00:00:00</span> / ' + formatTime(track.duration);
+			var playTimeLength = ('[play ]' + '00:00:00 / ' + formatTime(track.duration)).length;
+
+			var credit = '<a href="' + track.user.permalink_url + '">' + track.user.username + '</a> via <a href="http://soundcloud.com">soundcloud</a>';
+			var creditLength = (track.user.username + ' via soundcloud').length;
+
+			var renderLinez = [
+				'horizontal',
+				'vertical',
+				['text', track.title],
+				'vertical',
+				'vertical',
+				['text', playBtn + timeElapsed, playTimeLength],
+				'vertical',
+				['text', '<span class="progressBar">' + self.progressBar.join('') + '</span>', progressBarLength],
+				'vertical',
+				'vertical',
+				['text', credit, creditLength],
+				'vertical',
+				'horizontal'
+			];
+			// end TODO
+
+			for (var i = 0; i < renderLinez.length; i++) {
+				if (typeof renderLinez[i] === 'string') {
+					renderLine(renderLinez[i]);
+				} else if (typeof renderLinez[i] === 'object' && renderLinez[i][0] === 'text') {
+					var type = renderLinez[i][0];
+					var value = renderLinez[i][1];
+					var valueLength = renderLinez[i][2];
+					renderLine(type, value, valueLength);
+				}
+			}
+		}
+
+		function renderLine (type, text, textLength) {
+			if (!type) {
+				return console.log('ERROR: Must identify type in renderLine()');
+			}
+
+			for (var i = 0; i <= self.playerWidth; i++) {
+				if (i === 0 || i === self.playerWidth || type === 'horizontal') {
+					self.player.push(self.borderChar);
+
+				} else if (type === 'text' && i === self.playerPadding + 1) {
+					self.player.push(text);
+					i = i + ((textLength) ? textLength - 1 : text.length - 1);
+
+				} else {
+					self.player.push('&nbsp;');
+				}
+			}
+
+			self.player.push('<br/>');
+		}
+	}
+	this.togglePlayPause = function (e) {
+		var $target = e.target;
+		var playText = '[play ]';
+		var pauseText = '[pause]';
+
+		if ($target.innerHTML.toLowerCase().trim() === playText) {
+			$target.innerHTML = pauseText;
 
 			if (self.sound) {
-				self.sound.resume();
-				return;
+				return self.sound.resume();
 			}
 
 			SC.stream('/tracks/' + track.id, function (sound) {
@@ -71,36 +169,33 @@ function asciiPlayer (track) {
 				sound.play({
 					whileplaying: function () {
 						var timeElapsed = formatTime(this.position);
-						$player.querySelector('.timeElapsed').innerHTML = timeElapsed;
-						updateProgressBar(this.position / track.duration);
+						self.$player.querySelector('.timeElapsed').innerHTML = timeElapsed;
+						self.updateProgressBar(this.position / track.duration);
 					}
 				});
 			});
 
-		} else {
-			this.sound.pause();
-			e.target.innerHTML = 'play ';
-		}
-	}
-
-	function updateProgressBar (percent) {
-		var positionElapsed = Math.floor(percent*bar.length);
-
-		for (var i = 0; i < bar.length; i++) {
-			bar[positionElapsed] = '=';
-			bar[positionElapsed + 1] = '|';
+			return;
 		}
 
-		$player.querySelector('.progressBar').innerHTML = bar.join('');
+		self.sound.pause();
+		$target.innerHTML = playText;
 	}
-
-	function render () {
-		window.document.getElementById(track.id).appendChild($player);
+	this.updateProgressBar = function (percent) {
+		var positionElapsed = Math.floor(percent * self.progressBar.length);
+		for (var i = 0; i < self.progressBar.length; i++) {
+			self.progressBar[positionElapsed] = '=';
+			self.progressBar[positionElapsed + 1] = '|';
+		}
+		self.$player.querySelector('.progressBar').innerHTML = self.progressBar.join('');
 	}
-
-	// render
-	render();
+	// TODO: Add ability to skip in progress bar
+	// this.changeProgress = function (e) {
+	//
+	// }
 }
+
+
 
 function formatTime (miliseconds) {
 	var hours = Math.floor((miliseconds/(1000*60*60))%24);

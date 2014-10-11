@@ -58,8 +58,10 @@ var AsciiPlayer = (function () {
 
 		this.player = [];
 		this.borderChar = '*';
-		this.playerPadding = 3;
+		this.playerPadding = 2;
 		this.playerWidth = 60 - this.playerPadding;
+		this.progressBarLength = this.playerWidth - ((this.playerPadding + 1) * 2);
+		this.positionElapsed = 0;
 		this.playerStyle = {
 			fontFamily: 'monospace',
 			fontWeight: 'normal',
@@ -80,22 +82,20 @@ var AsciiPlayer = (function () {
 				self.$player.style[style] = self.playerStyle[style];
 			}
 
+			this.$progressBar = this.$player.querySelector('.progressBar');
+
 			// bind events
 			this.$player.querySelector('.playPause').addEventListener('click', this.togglePlayPause);
-			// TODO: Add ability to skip in progress bar
-			// $player.querySelector('.progressBar').addEventListener('click', changeProgress);
+			this.$player.querySelector('.progressBar').addEventListener('click', this.changeProgress);
 
 			wrapper.appendChild(this.$player);
 
 			function renderLines () {
 				// TODO: Clean the way progress bar + play btn + progress are being rendered/calcuated
-				var progressBarLength = 0;
 				self.progressBar = [];
 				self.progressBar.push('|');
-				progressBarLength++;
-				for (var i = 0; i < (self.playerWidth - ((self.playerPadding + 1) * 2)); i++) {
-					self.progressBar.push('-');
-					progressBarLength++;
+				for (var i = 0; i < self.progressBarLength; i++) {
+					self.progressBar.push('<span index=' + (i + 1) + '>-</span>');
 				}
 
 				var playBtn = '<span class="playPause">[play ]</span>';
@@ -113,7 +113,7 @@ var AsciiPlayer = (function () {
 					'vertical',
 					['text', playBtn + timeElapsed, playTimeLength],
 					'vertical',
-					['text', '<span class="progressBar">' + self.progressBar.join('') + '</span>', progressBarLength],
+					['text', '<span class="progressBar">' + self.progressBar.join('') + '</span>', self.progressBarLength+1],
 					'vertical',
 					'vertical',
 					['text', credit, creditLength],
@@ -167,14 +167,20 @@ var AsciiPlayer = (function () {
 					return self.sound.resume();
 				}
 
-				console.log(track.secretToken);
 				SC.stream('/tracks/' + track.id + ((track.secretToken) ? '?secret_token=' + track.secretToken: ''), function (sound) {
 					self.sound = sound;
 					sound.play({
 						whileplaying: function () {
 							var timeElapsed = formatTime(this.position);
+							var percent = this.position / track.duration;
+
 							self.$player.querySelector('.timeElapsed').innerHTML = timeElapsed;
-							self.updateProgressBar(this.position / track.duration);
+
+							var positionElapsed = Math.floor(percent * self.progressBarLength);
+							if (positionElapsed > self.positionElapsed) {
+								self.positionElapsed = positionElapsed;
+								self.updateProgressBar(self.positionElapsed);
+							}
 						}
 					});
 				});
@@ -185,18 +191,40 @@ var AsciiPlayer = (function () {
 			self.sound.pause();
 			$target.innerHTML = playText;
 		}
-		this.updateProgressBar = function (percent) {
-			var positionElapsed = Math.floor(percent * self.progressBar.length);
-			for (var i = 0; i < self.progressBar.length; i++) {
-				self.progressBar[positionElapsed] = '=';
-				self.progressBar[positionElapsed + 1] = '|';
+		this.updateProgressBar = function (positionElapsed) {
+			console.log('updateProgressBar');
+
+			if (self.$progressBar.childNodes[0].textContent == '|') {
+				self.$progressBar.childNodes[0].textContent = '=';
 			}
-			self.$player.querySelector('.progressBar').innerHTML = self.progressBar.join('');
+
+			for (var i = positionElapsed; i > 0; i--) {
+				self.$progressBar.childNodes[i].textContent = '=';
+			}
+
+			self.$progressBar.childNodes[positionElapsed].textContent = '=';
+			self.$progressBar.childNodes[positionElapsed+1].textContent = '|';
+
+			if (self.$progressBar.childNodes[positionElapsed+2].textContent === '=') {
+				for (var i = positionElapsed + 2; i < self.$progressBar.childNodes.length; i++) {
+					self.$progressBar.childNodes[i].textContent = '-';
+				}
+			}
 		}
-		// TODO: Add ability to skip in progress bar
-		// this.changeProgress = function (e) {
-		//
-		// }
+		this.changeProgress = function (e) {
+			console.log('changeProgress');
+			if (!self.sound) {
+				return;
+			}
+
+			var selectedPos = parseInt(e.target.getAttribute('index'));
+			var selectedPerc = selectedPos / self.progressBarLength;
+			var trackPos = selectedPerc * track.duration;
+
+			self.$player.querySelector('.timeElapsed').innerHTML = formatTime(trackPos);
+			self.sound.setPosition(trackPos);
+			self.positionElapsed = Math.floor(trackPos / track.duration);
+		}
 	}
 
 	function formatTime (miliseconds) {

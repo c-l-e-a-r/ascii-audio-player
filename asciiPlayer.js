@@ -61,14 +61,11 @@ var AsciiPlayer = (function () {
 		this.playerPadding = 3;
 		this.playerWidth = 60 - this.playerPadding;
 		this.playerStyle = {
-			backgroundColor: '#ffffff',
 			fontFamily: 'monospace',
-			fontSize: '13px',
 			fontWeight: 'normal',
 			fontStyle: 'normal',
 			letterSpacing: 'normal',
 			lineHeight: 'normal',
-			color: '#000000',
 			textTransform: 'uppercase'
 		};
 

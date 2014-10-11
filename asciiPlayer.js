@@ -7,8 +7,9 @@ var AsciiPlayer = (function () {
 
 	return {
 		init: function (config) {
+			var self = this;
 			var trackIDs = [];
-			var tracksOnPage, playerWrapper, secretToken;
+			var tracksOnPage;
 
 			if (!config.clientID) {
 				return console.log('ERROR: clientID was not found.')
@@ -20,17 +21,17 @@ var AsciiPlayer = (function () {
 
 			tracksOnPage = document.getElementsByClassName('ascii-player');
 			if (!tracksOnPage.length) {
-				return console.log('WARNING: No tracks were identified.');
+				return console.log('ERROR: No players were found.');
 			}
 
 			for (var i = 0; i < tracksOnPage.length; i++) {
-				var trackID = tracksOnPage[i].getAttribute('id');
-				playerWrapper = window.document.getElementById(trackID);
-				secretToken = playerWrapper.getAttribute('secret-token');
+				var $playerWrapper = tracksOnPage[i];
+
+				var trackID = $playerWrapper.getAttribute('id');
+				var secretToken = $playerWrapper.getAttribute('secret-token');
 
 				this.getTrack(trackID, secretToken, function (track) {
-					var player = new Player(track);
-					player.render(playerWrapper);
+					self.renderPlayer(track, $playerWrapper);
 				});
 			}
 		},
@@ -40,8 +41,15 @@ var AsciiPlayer = (function () {
 				if (track.errors) {
 					return console.log('ERROR: Unable to load track');
 				}
+				if (secretToken) {
+					track.secretToken = secretToken;
+				}
 				callback(track);
 			});
+		},
+		renderPlayer: function (track, wrapper) {
+			var player = new Player(track);
+			player.render(wrapper);
 		}
 	}
 
@@ -49,7 +57,7 @@ var AsciiPlayer = (function () {
 		var self = this;
 
 		this.player = [];
-		this.borderChar = '#';
+		this.borderChar = '*';
 		this.playerPadding = 3;
 		this.playerWidth = 60 - this.playerPadding;
 		this.playerStyle = {
@@ -162,7 +170,8 @@ var AsciiPlayer = (function () {
 					return self.sound.resume();
 				}
 
-				SC.stream('/tracks/' + track.id, function (sound) {
+				console.log(track.secretToken);
+				SC.stream('/tracks/' + track.id + ((track.secretToken) ? '?secret_token=' + track.secretToken: ''), function (sound) {
 					self.sound = sound;
 					sound.play({
 						whileplaying: function () {

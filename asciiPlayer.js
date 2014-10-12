@@ -65,6 +65,7 @@ var AsciiPlayer = (function () {
 		this.playerWidth = 60 - this.playerPadding;
 		this.progressBarLength = this.playerWidth - ((this.playerPadding + 1) * 2);
 		this.positionElapsed = 0;
+		this.displayBorder = true;
 		this.playerStyle = {
 			fontFamily: 'monospace',
 			fontWeight: 'normal',
@@ -76,6 +77,14 @@ var AsciiPlayer = (function () {
 		};
 
 		this.render = function (wrapper) {
+			self.displayBorder = ((wrapper.getAttribute('border') === 'false') ? false : true);
+			self.horizontalBorderChar = wrapper.getAttribute('border-char-horizontal');
+			self.verticalBorderChar = wrapper.getAttribute('border-char-vertical');
+
+			if (wrapper.getAttribute('border-char')) {
+				self.borderChar = wrapper.getAttribute('border-char');
+			}
+
 			renderLines();
 
 			// create element with player contents + player style
@@ -149,7 +158,15 @@ var AsciiPlayer = (function () {
 
 				for (var i = 0; i <= self.playerWidth; i++) {
 					if (i === 0 || i === self.playerWidth || type === 'horizontal') {
-						self.player.push(self.borderChar);
+						if (self.displayBorder) {
+							if (type === 'horizontal' && self.horizontalBorderChar) {
+								self.player.push(self.horizontalBorderChar);
+							} else if (self.verticalBorderChar) {
+								self.player.push(self.verticalBorderChar);
+							} else {
+								self.player.push(self.borderChar);
+							}
+						}
 
 					} else if (type === 'text' && i === self.playerPadding + 1) {
 						self.player.push(text);

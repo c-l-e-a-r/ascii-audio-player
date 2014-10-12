@@ -8,8 +8,6 @@ var AsciiPlayer = (function () {
 	return {
 		init: function (config) {
 			var self = this;
-			var trackIDs = [];
-			var tracksOnPage;
 
 			if (!config.clientID) {
 				return console.log('ERROR: clientID was not found.')
@@ -19,16 +17,22 @@ var AsciiPlayer = (function () {
 				client_id: config.clientID
 			});
 
-			tracksOnPage = document.getElementsByClassName('ascii-player');
-			if (!tracksOnPage.length) {
+			this.initTracks();
+		},
+		initTracks: function () {
+			var self = this;
+			var $tracksOnPage = document.getElementsByClassName('ascii-player');
+			var trackID, secretToken, $playerWrapper;
+
+			if (!$tracksOnPage.length) {
 				return console.log('ERROR: No players were found.');
 			}
 
-			for (var i = 0; i < tracksOnPage.length; i++) {
-				var $playerWrapper = tracksOnPage[i];
+			for (var i = 0; i < $tracksOnPage.length; i++) {
+				$playerWrapper = $tracksOnPage[i];
 
-				var trackID = $playerWrapper.getAttribute('id');
-				var secretToken = $playerWrapper.getAttribute('secret-token');
+				trackID = $playerWrapper.getAttribute('id');
+				secretToken = $playerWrapper.getAttribute('secret-token');
 
 				this.getTrack(trackID, secretToken, function (track) {
 					self.renderPlayer(track, $playerWrapper);
@@ -55,7 +59,6 @@ var AsciiPlayer = (function () {
 
 	function Player (track) {
 		var self = this;
-
 		this.player = [];
 		this.borderChar = '*';
 		this.playerPadding = 2;
@@ -68,11 +71,11 @@ var AsciiPlayer = (function () {
 			fontStyle: 'normal',
 			letterSpacing: 'normal',
 			lineHeight: 'normal',
-			textTransform: 'uppercase'
+			textTransform: 'uppercase',
+			cursor: 'default'
 		};
 
 		this.render = function (wrapper) {
-			// Start Rendering Player
 			renderLines();
 
 			// create element with player contents + player style
@@ -93,9 +96,14 @@ var AsciiPlayer = (function () {
 			function renderLines () {
 				// TODO: Clean the way progress bar + play btn + progress are being rendered/calcuated
 				self.progressBar = [];
-				self.progressBar.push('|');
-				for (var i = 0; i < self.progressBarLength; i++) {
-					self.progressBar.push('<span index=' + (i + 1) + '>-</span>');
+				var progressChar;
+				for (var i = 0; i <= self.progressBarLength; i++) {
+					if (i === 0) {
+						progressChar = '|';
+					} else {
+						progressChar = '-';
+					}
+					self.progressBar.push('<span index=' + i + '>' + progressChar + '</span>');
 				}
 
 				var playBtn = '<span class="playPause">[play ]</span>';
@@ -177,10 +185,13 @@ var AsciiPlayer = (function () {
 							self.$player.querySelector('.timeElapsed').innerHTML = timeElapsed;
 
 							var positionElapsed = Math.floor(percent * self.progressBarLength);
-							if (positionElapsed > self.positionElapsed) {
+							if (positionElapsed >= self.positionElapsed) {
 								self.positionElapsed = positionElapsed;
 								self.updateProgressBar(self.positionElapsed);
 							}
+						},
+						onfinish: function () {
+							self.updateProgressBar(self.progressBarLength);
 						}
 					});
 				});
@@ -192,38 +203,32 @@ var AsciiPlayer = (function () {
 			$target.innerHTML = playText;
 		}
 		this.updateProgressBar = function (positionElapsed) {
-			console.log('updateProgressBar');
-
-			if (self.$progressBar.childNodes[0].textContent == '|') {
-				self.$progressBar.childNodes[0].textContent = '=';
-			}
-
-			for (var i = positionElapsed; i > 0; i--) {
+			for (var i = positionElapsed; i >= 0; i--) {
 				self.$progressBar.childNodes[i].textContent = '=';
 			}
 
-			self.$progressBar.childNodes[positionElapsed].textContent = '=';
-			self.$progressBar.childNodes[positionElapsed+1].textContent = '|';
+			self.$progressBar.childNodes[positionElapsed].textContent = '|';
 
-			if (self.$progressBar.childNodes[positionElapsed+2].textContent === '=') {
-				for (var i = positionElapsed + 2; i < self.$progressBar.childNodes.length; i++) {
+			for (var i = positionElapsed + 1; i < self.$progressBar.childNodes.length; i++) {
+				if (self.$progressBar.childNodes[i].textContent !== '-') {
 					self.$progressBar.childNodes[i].textContent = '-';
+				} else {
+					return;
 				}
 			}
 		}
 		this.changeProgress = function (e) {
-			console.log('changeProgress');
 			if (!self.sound) {
 				return;
 			}
 
-			var selectedPos = parseInt(e.target.getAttribute('index'));
-			var selectedPerc = selectedPos / self.progressBarLength;
-			var trackPos = selectedPerc * track.duration;
+			var selectedPosition = parseInt(e.target.getAttribute('index'));
+			var selectedDuration = (selectedPosition / self.progressBarLength) * track.duration;
 
-			self.$player.querySelector('.timeElapsed').innerHTML = formatTime(trackPos);
-			self.sound.setPosition(trackPos);
-			self.positionElapsed = Math.floor(trackPos / track.duration);
+			self.$player.querySelector('.timeElapsed').innerHTML = formatTime(selectedDuration);
+			self.sound.setPosition(selectedDuration);
+
+			self.positionElapsed = Math.floor(selectedPosition / track.duration);
 		}
 	}
 

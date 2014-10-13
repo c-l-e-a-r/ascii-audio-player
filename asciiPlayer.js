@@ -23,7 +23,6 @@ var AsciiPlayer;
 		function populateTracksOnpage () {
 			var self = this;
 			var $tracksOnPage = document.getElementsByClassName('ascii-player');
-			// var trackID, secretToken, $playerWrapper;
 
 			if (!$tracksOnPage.length) {
 				return console.log('ERROR: No players were found.');
@@ -59,8 +58,9 @@ var AsciiPlayer;
 				title: $wrapper.getAttribute('title'),
 				displayCredit: $wrapper.getAttribute('display-credit')
 			};
-			var player = new Player(track, config);
-			player.render($wrapper);
+
+			var player = new Player(track, $wrapper, config);
+			player.render();
 		};
 
 		return {
@@ -74,10 +74,11 @@ var AsciiPlayer;
 
 	// PLAYER CLASS
 
-	function Player (track, config) {
+	function Player (track, wrapper, config) {
 		var self = this;
 
 		// player characters
+		this.$player = wrapper;
 		this.player = [];
 
 		// track
@@ -97,6 +98,7 @@ var AsciiPlayer;
 		// progress bar
 		this.positionElapsed = 0;
 		this.progressBarLength = this.playerWidth - ((this.playerPadding + 1) * 2);
+		this.$progressBar;
 
 		// style
 		this.playerStyle = {
@@ -110,12 +112,11 @@ var AsciiPlayer;
 		};
 	}
 
-	Player.prototype.render = function (wrapper) {
+	Player.prototype.render = function () {
 		var self = this;
 		renderLines();
 
 		// create element with player contents + player style
-		this.$player = wrapper; //document.createElement('div');
 		this.$player.innerHTML = this.player.join('');
 		for (style in self.playerStyle) {
 			self.$player.style[style] = self.playerStyle[style];
@@ -124,12 +125,66 @@ var AsciiPlayer;
 		this.$progressBar = this.$player.querySelector('.progressBar');
 
 		// bind events
-		this.$player.querySelector('.playPause').addEventListener('click', this.togglePlayPause);
-		this.$player.querySelector('.progressBar').addEventListener('click', this.changeProgress);
+		this.$player.querySelector('.playPause').addEventListener('click', togglePlayPause);
+		this.$player.querySelector('.progressBar').addEventListener('click', changeProgress);
 
-		// wrapper.appendChild(this.$player);
+
+		function togglePlayPause (e) {
+			var $target = e.target;
+			var playText = '[play ]';
+			var pauseText = '[pause]';
+
+			if ($target.innerHTML.toLowerCase().trim() === playText) {
+				$target.innerHTML = pauseText;
+
+				if (self.sound) {
+					return self.sound.resume();
+				}
+
+				SC.stream('/tracks/' + self.track.id + ((self.track.secretToken) ? '?secret_token=' + self.track.secretToken: ''), function (sound) {
+					self.sound = sound;
+					sound.play({
+						whileplaying: function () {
+							var timeElapsed = formatTime(this.position);
+							var percent = this.position / self.track.duration;
+
+							self.$player.querySelector('.timeElapsed').innerHTML = timeElapsed;
+
+							var positionElapsed = Math.floor(percent * self.progressBarLength);
+							if (positionElapsed >= self.positionElapsed) {
+								self.positionElapsed = positionElapsed;
+								self.updateProgressBar(self.positionElapsed);
+							}
+						},
+						onfinish: function () {
+							self.updateProgressBar(self.progressBarLength);
+						}
+					});
+				});
+
+				return;
+			}
+
+			self.sound.pause();
+			$target.innerHTML = playText;
+		}
+
+		function changeProgress (e) {
+			if (!self.sound) {
+				return;
+			}
+
+			var selectedPosition = parseInt(e.target.getAttribute('index'));
+			var selectedDuration = (selectedPosition / self.progressBarLength) * self.track.duration;
+
+			self.$player.querySelector('.timeElapsed').innerHTML = formatTime(selectedDuration);
+			self.sound.setPosition(selectedDuration);
+
+			self.positionElapsed = Math.floor(selectedPosition / self.track.duration);
+		}
 
 		function renderLines () {
+
 			// TODO: Clean the way progress bar + play btn + progress are being rendered/calcuated
 			self.progressBar = [];
 			var progressChar;
@@ -214,74 +269,20 @@ var AsciiPlayer;
 		}
 	}
 
-	Player.prototype.togglePlayPause = function (e) {
-		var $target = e.target;
-		var playText = '[play ]';
-		var pauseText = '[pause]';
-
-		if ($target.innerHTML.toLowerCase().trim() === playText) {
-			$target.innerHTML = pauseText;
-
-			if (self.sound) {
-				return self.sound.resume();
-			}
-
-			SC.stream('/tracks/' + track.id + ((track.secretToken) ? '?secret_token=' + track.secretToken: ''), function (sound) {
-				self.sound = sound;
-				sound.play({
-					whileplaying: function () {
-						var timeElapsed = formatTime(this.position);
-						var percent = this.position / track.duration;
-
-						self.$player.querySelector('.timeElapsed').innerHTML = timeElapsed;
-
-						var positionElapsed = Math.floor(percent * self.progressBarLength);
-						if (positionElapsed >= self.positionElapsed) {
-							self.positionElapsed = positionElapsed;
-							self.updateProgressBar(self.positionElapsed);
-						}
-					},
-					onfinish: function () {
-						self.updateProgressBar(self.progressBarLength);
-					}
-				});
-			});
-
-			return;
-		}
-
-		self.sound.pause();
-		$target.innerHTML = playText;
-	}
-
 	Player.prototype.updateProgressBar = function (positionElapsed) {
 		for (var i = positionElapsed; i >= 0; i--) {
-			self.$progressBar.childNodes[i].textContent = '=';
+			this.$progressBar.childNodes[i].textContent = '=';
 		}
 
-		self.$progressBar.childNodes[positionElapsed].textContent = '|';
+		this.$progressBar.childNodes[positionElapsed].textContent = '|';
 
-		for (var i = positionElapsed + 1; i < self.$progressBar.childNodes.length; i++) {
-			if (self.$progressBar.childNodes[i].textContent !== '-') {
-				self.$progressBar.childNodes[i].textContent = '-';
+		for (var i = positionElapsed + 1; i < this.$progressBar.childNodes.length; i++) {
+			if (this.$progressBar.childNodes[i].textContent !== '-') {
+				this.$progressBar.childNodes[i].textContent = '-';
 			} else {
 				return;
 			}
 		}
-	}
-
-	Player.prototype.changeProgress = function (e) {
-		if (!self.sound) {
-			return;
-		}
-
-		var selectedPosition = parseInt(e.target.getAttribute('index'));
-		var selectedDuration = (selectedPosition / self.progressBarLength) * track.duration;
-
-		self.$player.querySelector('.timeElapsed').innerHTML = formatTime(selectedDuration);
-		self.sound.setPosition(selectedDuration);
-
-		self.positionElapsed = Math.floor(selectedPosition / track.duration);
 	}
 
 	function formatTime (miliseconds) {

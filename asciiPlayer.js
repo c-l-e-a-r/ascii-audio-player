@@ -50,7 +50,7 @@ var AsciiPlayer;
 
 		function renderTrack (track, $wrapper) {
 			var config = {
-				displayBorder: ($wrapper.getAttribute('border'),
+				displayBorder: $wrapper.getAttribute('border'),
 				horizontalBorderChar: $wrapper.getAttribute('border-char-horizontal'),
 				verticalBorderChar: $wrapper.getAttribute('border-char-vertical'),
 				borderChar: $wrapper.getAttribute('border-char'),

@@ -50,7 +50,7 @@ var AsciiPlayer;
 
 		function renderTrack (track, $wrapper) {
 			var config = {
-				displayBorder: (($wrapper.getAttribute('border') === 'false') ? false : true),
+				displayBorder: ($wrapper.getAttribute('border'),
 				horizontalBorderChar: $wrapper.getAttribute('border-char-horizontal'),
 				verticalBorderChar: $wrapper.getAttribute('border-char-vertical'),
 				borderChar: $wrapper.getAttribute('border-char'),
@@ -88,10 +88,10 @@ var AsciiPlayer;
 		this.playerPadding = config.padding || 2;
 		this.playerWidth = config.width - this.playerPadding || 60 - this.playerPadding;
 
-		this.displayBorder = config.displayBorder || true;
+		this.displayBorder = ((config.displayBorder === 'false') ? false : true);
 		this.borderChar = config.borderChar || '*';
 		this.horizontalBorderChar = config.horizontalBorderChar || this.borderChar;
-		this.verticalBorderChar = config.horizontalBorderChar || this.borderChar;
+		this.verticalBorderChar = config.verticalBorderChar || this.borderChar;
 		this.displayCredit = ((config.displayCredit === 'false') ? false : true);
 
 		// progress bar

@@ -218,11 +218,12 @@ var AsciiPlayer;
 			]
 
 			if (self.displayCredit) {
-				renderLinez.push(['text', credit, creditLength]);
+				renderLinez.push(
+					['text', credit, creditLength], 'vertical'
+				);
 			}
 
 			renderLinez.push(
-				'vertical',
 				'horizontal'
 			);
 			// end TODO
